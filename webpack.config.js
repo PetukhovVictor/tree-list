@@ -1,4 +1,4 @@
-const applicationConfig = require('app.config');
+const applicationConfig = require('./app.config.js');
 
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
 
