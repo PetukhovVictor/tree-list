@@ -12,6 +12,7 @@
   },
   "devDependencies": {
     "babel": "^6.23.0",
+    "extract-text-webpack-plugin": "^2.1.0",
     "path": "^0.12.7",
     "webpack": "^2.3.1"
   }
