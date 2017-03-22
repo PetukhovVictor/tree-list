@@ -16,7 +16,7 @@ const webpackConfig = {
         loaders: [
             {
                 test: /\.jsx?$/,
-                loader: 'babel',
+                loader: 'babel-loader',
                 include: applicationConfig.source.path
             },
             {
