@@ -3,9 +3,15 @@
   "version": "1.0.0",
   "description": "Tree list component",
   "main": "index.js",
-  "scripts": {
-
-  },
+  "scripts": {},
   "author": "Victor Petukhov",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "lodash": "^4.17.4",
+    "react": "^15.4.2"
+  },
+  "devDependencies": {
+    "babel": "^6.23.0",
+    "webpack": "^2.3.1"
+  }
 }
