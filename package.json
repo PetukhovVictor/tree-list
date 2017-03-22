@@ -1,0 +1,11 @@
+{
+  "name": "jb-tree-list",
+  "version": "1.0.0",
+  "description": "Tree list component",
+  "main": "index.js",
+  "scripts": {
+
+  },
+  "author": "Victor Petukhov",
+  "license": "ISC"
+}
