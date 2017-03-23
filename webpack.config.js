@@ -5,14 +5,15 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
 
 const webpackConfig = {
-    entry: './src/app.js',
+    context: applicationConfig.source.path,
+    entry: './app.js',
     resolve: {
         extensions: ['.js', '.jsx']
     },
     output: {
-        path: path.resolve(applicationConfig.output.path, 'assets'),
+        path: applicationConfig.output.path,
         filename: '[name].js',
-        publicPath: './'
+        publicPath: '/assets'
     },
     module: {
         loaders: [
@@ -35,7 +36,10 @@ const webpackConfig = {
                 to: applicationConfig.output.path
             }
         ])
-    ]
+    ],
+    devServer: {
+        contentBase: applicationConfig.static.path
+    }
 };
 
 module.exports = webpackConfig;
