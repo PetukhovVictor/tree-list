@@ -1,5 +1,7 @@
+const path = require('path');
 const applicationConfig = require('./app.config.js');
 
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
 
 const webpackConfig = {
@@ -8,7 +10,7 @@ const webpackConfig = {
         extensions: ['.js', '.jsx']
     },
     output: {
-        path: applicationConfig.output.path,
+        path: path.resolve(applicationConfig.output.path, 'assets'),
         filename: '[name].js',
         publicPath: './'
     },
@@ -25,7 +27,15 @@ const webpackConfig = {
                 include: applicationConfig.source.path
             }
         ]
-    }
+    },
+    plugins: [
+        new CopyWebpackPlugin([
+            {
+                from: path.resolve(applicationConfig.source.path, 'Assets'),
+                to: applicationConfig.output.path
+            }
+        ])
+    ]
 };
 
 module.exports = webpackConfig;
