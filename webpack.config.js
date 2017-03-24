@@ -8,6 +8,10 @@ const webpackConfig = {
     context: applicationConfig.source.path,
     entry: './app.js',
     resolve: {
+        modules: [
+            applicationConfig.source.path,
+            'node_modules'
+        ],
         extensions: ['.js', '.jsx']
     },
     output: {

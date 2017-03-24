@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import {TreeListDemoServices} from './Services';
 
-const TreeListDemo = React.createClass({
+export const TreeListDemo = React.createClass({
     displayName: 'TreeListDemo',
 
     getInitialState () {
