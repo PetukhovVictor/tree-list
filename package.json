@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "Tree list component",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "build": "webpack",
+    "start": "webpack-dev-server"
+  },
   "author": "Victor Petukhov",
   "license": "ISC",
   "dependencies": {
