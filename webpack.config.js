@@ -17,6 +17,7 @@ const webpackConfig = {
     output: {
         path: applicationConfig.output.path,
         filename: '[name].js',
+        chunkFilename: '[name].[hash].js',
         publicPath: '/assets'
     },
     module: {
