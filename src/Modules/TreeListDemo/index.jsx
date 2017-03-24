@@ -5,13 +5,28 @@ import {TreeListDemoServices} from './Services';
 export const TreeListDemo = React.createClass({
     displayName: 'TreeListDemo',
 
+    sourceUrl: '/assets/resources/tree_list.json',
+
     getInitialState () {
         return {
-            isLoading: true
+            isLoading: true,
+            tree: null
         };
     },
 
-    render () {
+    componentDidMount () {
+        TreeListDemoServices.loadFromJSON(this.sourceUrl).then(treeListStructure => {
+            this.setState({
+                tree: treeListStructure
+            });
+        }).catch(() => {
 
+        });
+    },
+
+    render () {
+        return (
+            <div>666</div>
+        );
     }
 });
