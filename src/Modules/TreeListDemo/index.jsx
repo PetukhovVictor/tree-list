@@ -1,5 +1,7 @@
 import * as React from 'react';
 
+import {TreeList} from 'Components/TreeList';
+
 import {TreeListDemoServices} from './Services';
 
 export const TreeListDemo = React.createClass({
@@ -10,23 +12,29 @@ export const TreeListDemo = React.createClass({
     getInitialState () {
         return {
             isLoading: true,
-            tree: null
+            structure: null
         };
     },
 
     componentDidMount () {
         TreeListDemoServices.loadFromJSON(this.sourceUrl).then(treeListStructure => {
             this.setState({
-                tree: treeListStructure
+                isLoading: false,
+                structure: treeListStructure
             });
         }).catch(() => {
-
+            this.setState({
+                isLoading: false
+            });
         });
     },
 
     render () {
+        const {isLoading, structure} = this.state;
         return (
-            <div>666</div>
+            <div>
+                {isLoading ? 'Loading...' : <TreeList structure={structure} />}
+            </div>
         );
     }
 });

@@ -1,9 +1,27 @@
+@import "./fonts";
+
 body {
     margin: 0;
     padding: 0;
 }
 
+@layout-width: 1000px;
+@navigation-width: 270px;
+
 .layout {
-    width: 1000px;
+    width: @layout-width;
     margin: 0 auto;
+
+    .navigation {
+        width: @navigation-width;
+        background: #efefef;
+        float: left;
+    }
+
+    .content {
+        width: @layout-width - @navigation-width;
+        float: left;
+        padding-left: 25px;
+        box-sizing: border-box;
+    }
 }
