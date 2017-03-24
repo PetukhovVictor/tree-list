@@ -29,7 +29,7 @@ const webpackConfig = {
             },
             {
                 test: /\.less$/,
-                loader: ExtractTextPlugin.extract('css!less'),
+                loader: ExtractTextPlugin.extract('css-loader!less-loader'),
                 include: applicationConfig.source.path
             }
         ]
@@ -40,7 +40,8 @@ const webpackConfig = {
                 from: path.resolve(applicationConfig.source.path, 'Assets'),
                 to: applicationConfig.output.path
             }
-        ])
+        ]),
+        new ExtractTextPlugin('./[name].css')
     ],
     devServer: {
         contentBase: applicationConfig.static.path
