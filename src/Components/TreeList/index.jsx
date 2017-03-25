@@ -1,47 +1,57 @@
 import * as React from 'react';
-
 import {isArray} from 'lodash';
+
+require('Styles/Components/TreeList.less');
+
+import {TreeListItemsGroup} from './TreeListItemsGroup';
 
 export const TreeList = React.createClass({
     propTypes: {
         // Структура древовидного списка.
-        structure: React.PropTypes.array
+        structure: React.PropTypes.array,
+        searchTimeout: React.PropTypes.number
+    },
+
+    getDefaultProps: function() {
+        return {
+            searchTimeout: 1000
+        };
     },
 
     getInitialState () {
         return {
-
+            searchTimer: null,
+            filteredStructure: null
         };
     },
 
-    renderPages (pages) {
-        let pageElements = [];
+    search (phrase) {
 
-        pages.forEach((page) => {
-            pageElements.push(
-                <div>
-                    {page.title}
-                </div>
-            );
-        });
+    },
 
-        return pageElements;
+    handleSearchPhraseTyping (e) {
+        const {searchTimeout} = this.props;
+        const {searchTimer} = this.state;
+        const value = e.target.value;
+
+        searchTimer != null && clearTimeout(searchTimer);
+
+        const timer = setTimeout(() => this.search(value), searchTimeout);
+        this.setState({ searchTimer: timer });
     },
 
     renderSections () {
         const {structure} = this.props;
         let sectionElements = [];
 
-        structure.forEach((section) => {
-            let pages;
-            if (isArray(section.pages)) {
-                pages = this.renderPages(section.pages);
-            }
+        structure.forEach((section, index) => {
             sectionElements.push(
-                <div>
-                    {section.title}
-                    {pages && <div className="pages">{pages}</div>}
-                </div>
+                <TreeListItemsGroup
+                    item={section}
+                    expandable={false}
+                    expanded
+                    classes={['top-level']}
+                />
             );
         });
 
@@ -50,7 +60,8 @@ export const TreeList = React.createClass({
 
     render () {
         return (
-            <div>
+            <div className="tree-list">
+                <input type="text" onKeyUp={this.handleSearchPhraseTyping} className="tree-list-search" />
                 {this.renderSections()}
             </div>
         );
