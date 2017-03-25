@@ -1,12 +1,14 @@
 @import "./fonts";
+@import "./variables";
 
 body {
     margin: 0;
     padding: 0;
 }
 
-@layout-width: 1000px;
-@navigation-width: 270px;
+h1 {
+    font-family: 'Gotham Bold';
+}
 
 .layout {
     width: @layout-width;
@@ -14,7 +16,7 @@ body {
 
     .navigation {
         width: @navigation-width;
-        background: #efefef;
+        background: @navigation-background-color;
         float: left;
     }
 
