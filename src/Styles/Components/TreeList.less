@@ -1,13 +1,28 @@
 @import "../variables";
 
+.tree-list-loading {
+    background: url('/assets/images/loading.gif') center center no-repeat;
+    background-size: 36px 36px;
+    width: @navigation-width;
+    height: 36px;
+    margin: 20px 0;
+}
+
 .tree-list {
     margin-bottom: 10px;
     padding-top: 70px;
     position: relative;
 
+    .tree-list-no-results {
+        text-align: center;
+        margin: 10px 0 25px 0;
+        font-size: 12px;
+    }
+
     .tree-list-search {
         outline: none;
         border: none;
+        z-index: 1;
         top: 0;
         width: @navigation-width;
         height: 50px;
@@ -21,7 +36,6 @@
     }
 
     .page-item {
-        font-family: 'Gotham Book';
         line-height: 20px;
         margin: 0 8px;
 
@@ -40,7 +54,6 @@
 
         .children-pages {
             margin-left: 20px;
-            display: none;
         }
     }
 
