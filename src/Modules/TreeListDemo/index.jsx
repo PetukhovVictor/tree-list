@@ -33,7 +33,9 @@ export const TreeListDemo = React.createClass({
         const {isLoading, structure} = this.state;
         return (
             <div>
-                {isLoading ? 'Loading...' : <TreeList structure={structure} />}
+                {
+                    isLoading ? <div className="tree-list-loading"></div> : <TreeList structure={structure} />
+                }
             </div>
         );
     }
