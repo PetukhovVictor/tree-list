@@ -2,10 +2,26 @@ import * as React from 'react';
 import {isArray, clone, cloneDeep} from 'lodash';
 import $ from 'jquery';
 
-require('Styles/Components/TreeList.less');
-
 import {TreeListItemsGroup} from './TreeListItemsGroup';
 
+require('Styles/Components/TreeList.less');
+
+/**
+ * Callback-функция по умолчанию, реализующая шаблон для элемента дерева.
+ *
+ * @param item - Объект элемента дерева.
+ * Содержит помимо всех полей из источника несколько служебных полей:
+ *      - _directChildrenNumber - количество "прямых" наследников элемента;
+ *      - _allChildrenNumber - количество всех наследников элемента (учитывая вложенность).
+ * @param handles - Объект с обработчиками событий, связанных с элементом.
+ * Содержит следующие события:
+ *      - click - клик по элементу, порождает разворачивание и показ дочерних элементов;
+ *      - mouseEnter - наведение мыши элемент или переход к элементу посредством нажатия стрелок "вверх"/"вниз";
+ *      - mouseLeave - уведение курсора от элемента или переход с помощью стрелок к другому элементу.
+ * События mouseEnter и mouseLeave реализуют клавиатурную навигацию по дереву и должны вызваться по событиям onMouseEnter и onMouseLeave.
+ *
+ * @return {JSX.Element}
+ */
 const itemDefaultTemplate = (item, handles) => {
     return (
         <a
@@ -20,11 +36,17 @@ const itemDefaultTemplate = (item, handles) => {
     )
 };
 
+/**
+ * Компонент древовидного списка.
+ */
 export const TreeList = React.createClass({
     displayName: 'TreeList',
 
+    /**
+     * structure - структура древовидного списка;
+     * searchTimeout - задержка перед началом поиска после окончания ввода пользователем поисковой фразы.
+     */
     propTypes: {
-        // Структура древовидного списка.
         structure: React.PropTypes.array,
         searchTimeout: React.PropTypes.number
     },
@@ -36,6 +58,31 @@ export const TreeList = React.createClass({
         };
     },
 
+    /**
+     * Начальные значения state.
+     * В момент установки начальных значений state, инициируем индексацию структуры древовидного списка.
+     *
+     * searchTimer - переменная для хранения таймера от окончания ввода поисковой фразы до запуска поиска.
+     * filteredStructure - отфильтрованная и линеаризованная структура древовидного списка (используется для поиска).
+     * indexedStructure - проиндексированная структура древовидного списка (карта).
+     *      Структура содержит:
+     *          - location - местоположение элемента;
+     *              - path - путь (массив с родительскими элементами) к элементу;
+     *              - index - порядковый номер в списке элементов ближайшего родителя;
+     *          - directChildrenNumber - количество "прямых" наследников элемента;
+     *          - allChildrenNumber - количество всех наследников элемента (учитывая вложенность).
+     * highlightRule - правило для выделения элементов дерева.
+     *      Содержит:
+     *          - field - поле, по которому производится поиск;
+     *          - value - значение указанного поля, элементы с которым должны быть выделены;
+     *          - isStrict - использовать ли строгое совпадение (в противном случае будет использоваться поиск по подстроке).
+     * activeItem - активный элемент дерева (выделяется полужирным).
+     *      Содержит:
+     *          - id - идентификатор элемента дерева, который нужно поменить активным;
+     *          - location - местоположение элемента (опциональное поле, используется для автоматического разворачивания родительских элементов);
+     *              - path - путь (массив с родительскими элементами) к элементу;
+     *              - index - порядковый номер в списке элементов ближайшего родителя;
+     */
     getInitialState () {
         const indexedStructure = this.structureIndexing(
             this.props.structure,
@@ -52,7 +99,30 @@ export const TreeList = React.createClass({
         };
     },
 
+    /**
+     * Инициализация API.
+     * Реализация API подразумевает использование listener'ов.
+     * Вызов метода API происходит с помощью dispatchEvent.
+     * Пример:
+     *      document.dispatchEvent(
+     *          new CustomEvent('navigationSetActiveItem', {
+     *              detail: {
+     *                  id: 'procedures.developingcode.cut',
+     *                  expandIntermediateItems: true,
+     *                  scrollAnimation: true,
+     *                  scrollToParent: true
+     *              }
+     *          })
+     *      );
+     * TODO: Написать класс-обертку для более красивого вызова методов API.
+     */
     APIInit () {
+        /**
+         * Search API. Запуск поиска по указанной фразе.
+         * Параметры:
+         *      - phrase - поисковая фраза;
+         *      - isStrict (опционально) - использовать ли строгое совпадение (в противном случае будет использоваться поиск по подстроке).
+         */
         document.addEventListener('navigationSearch', (e) => {
             const detail = e.detail;
             if (!detail || !detail.phrase) {
@@ -62,6 +132,14 @@ export const TreeList = React.createClass({
             detail.isStrict = detail.isStrict || false;
             this.search(detail.phrase, detail.field, detail.isStrict);
         });
+        /**
+         * Active items API. Установка активного элемента.
+         * Параметры:
+         *      - id - Идентификатор элемента;
+         *      - expandIntermediateItems (опционально, по умолчанию - true) - Осуществить ли автоматическое разворачивание всех потомков указанного элемента;
+         *      - scrollToParent - (опционально, по умолчанию - true) - Осуществить ли автоматическое пролистывание не к самому элементу, а к его ближайшему родителю;
+         *      - scrollAnimation - (опционально, по умолчанию - true) - Использовать ли плавное пролистывание;
+         */
         document.addEventListener('navigationSetActiveItem', (e) => {
             const detail = e.detail;
             if (!detail || !detail.id) {
@@ -70,22 +148,59 @@ export const TreeList = React.createClass({
             this.setActiveItem(detail.id, {
                 expandIntermediateItems: detail.expandIntermediateItems !== false,
                 scrollToParent: detail.scrollToParent !== false,
-                scrollAnimation: detail.scrollAnimation !== false,
+                scrollAnimation: detail.scrollAnimation !== false
             });
         });
+        /**
+         * Сброс активного элемента.
+         */
         document.addEventListener('navigationResetActiveItem', (e) => this.resetActiveItem());
+        /**
+         * Сброс результатов поиска.
+         */
         document.addEventListener('navigationSearchReset', (e) => this.searchReset());
     },
 
+    /**
+     * Инициализируем API сразу после монтирования компоненты.
+     */
     componentDidMount () {
         this.APIInit();
     },
 
+    /**
+     * Добавление к объекту элемента дерева служебных полей:
+     *       - directChildrenNumber - количество "прямых" наследников элемента;
+     *       - allChildrenNumber - количество всех наследников элемента (учитывая вложенность).
+     *
+     * @param item - Элемент дерева.
+     * @param structureElement - Элемент проидексированной структуры, соответствующий указанному элементу.
+     */
     itemAppendChildInfo (item, structureElement) {
         item._directChildrenNumber = structureElement.directChildrenNumber;
         item._allChildrenNumber = structureElement.allChildrenNumber;
     },
 
+    /**
+     * Индексирование структуры древовидного списка.
+     *
+     * Индексирование подразумевает создание линейной hash map вида:
+     *      '{element_id}': {
+     *          path: array,
+     *          index: number,
+     *          directChildrenNumber: number,
+     *          allChildrenNumber: number
+     *      }
+     *
+     * Индексирование позволяет в дальнейшем очень быстро находить местоположение элемента в дереве,
+     * а также получать некоторую другую информацию без дополнительных вычислений (например, кол-во дочерних элементов).
+     *
+     * @param structure - изначальная структура древовидного списка;
+     * @param path - путь к просматриваемому элементу дерева;
+     * @param indexedStructureInfo - часть проиндексированной структуры дерева.
+     *
+     * @return { indexedStructure, childrenCounters }
+     */
     structureIndexing (structure, path, indexedStructureInfo) {
         let ISI = indexedStructureInfo;
 
@@ -113,6 +228,9 @@ export const TreeList = React.createClass({
         return ISI;
     },
 
+    /**
+     * Сброс результатов поиска по дереву.
+     */
     searchReset () {
         this.setState({
             filteredStructure: null,
@@ -120,15 +238,30 @@ export const TreeList = React.createClass({
         });
     },
 
+    /**
+     * Сброс ранее установленного активного элемента дерева.
+     */
     resetActiveItem () {
         this.setState({
             activeItem: null
         });
     },
 
-    filterPages (params, pages, filteredPages) {
+    /**
+     * Фильтрация элементов дерева.
+     * 
+     * @param params - параметры фильтрации. Содержит:
+     *      - field - поле, по которому производится фильтрация;
+     *      - value - значение указанного поля, элементы с которым будут отобраны;
+     *      - isStrict - использовать ли строгое совпадение (в противном случае будет использоваться поиск по подстроке).
+     * @param elements - просматриваемый кусок структуры с элементами, над которыми производится фильтраци.
+     * @param filteredElements - часть массива с отфильтрованными элементами.
+     *
+     * @return filteredElements - массив с отфильтрованными элементами.
+     */
+    filterElements (params, elements, filteredElements) {
         params.isStrict = params.isStrict || false;
-        const filteredPagesCurrentLevel = pages
+        const filteredElementsCurrentLevel = elements
             .filter((page) => {
                 return params.isStrict ?
                 page[params.field] === params.value :
@@ -139,19 +272,27 @@ export const TreeList = React.createClass({
                 page.pages = null;
                 return page;
             });
-        filteredPages = filteredPages.concat(filteredPagesCurrentLevel);
-        if (params.isStrict && filteredPages.length > 0) {
-            return filteredPages;
+        filteredElements = filteredElements.concat(filteredElementsCurrentLevel);
+        if (params.isStrict && filteredElements.length > 0) {
+            return filteredElements;
         }
-        pages.every((page) => {
+        elements.every((page) => {
             if (isArray(page.pages)) {
-                filteredPages =  this.filterPages(params, page.pages, filteredPages);
+                filteredElements =  this.filterElements(params, page.pages, filteredElements);
             }
-            return !params.isStrict || filteredPages == 0;
+            return !params.isStrict || filteredElements == 0;
         });
-        return filteredPages;
+        return filteredElements;
     },
 
+    /**
+     * Поиск элементов в дереве.
+     * В результате поиска осуществляет запись в state отфильтрованной структуры и правила для выделения заголовков элементов или их частей.
+     *
+     * @param phrase - поисковая фраза, по которой будут отобраны элементы;
+     * @param field - поле, по которому производится фильтрация;
+     * @param isStrict - использовать ли строгое совпадение (в противном случае будет использоваться поиск по подстроке).
+     */
     search (phrase, field, isStrict) {
         const {structure} = this.props;
         let filteredStructure = [];
@@ -163,14 +304,14 @@ export const TreeList = React.createClass({
 
         structure.forEach((section) => {
             if (isArray(section.pages)) {
-                const filteredPages = this.filterPages({
+                const filteredElements = this.filterElements({
                     value: phrase,
                     field: field,
                     isStrict: isStrict
                 }, section.pages, []);
-                if (filteredPages.length > 0) {
+                if (filteredElements.length > 0) {
                     const filteredSection = clone(section);
-                    filteredSection.pages = filteredPages;
+                    filteredSection.pages = filteredElements;
                     filteredStructure.push(filteredSection);
                 }
             }
@@ -181,11 +322,20 @@ export const TreeList = React.createClass({
             highlightRule: {
                 field: field,
                 value: phrase,
-                isStrict: isStrict,
+                isStrict: isStrict
             }
         });
     },
 
+    /**
+     * Выбор активного элемента.
+     *
+     * @param id - идентификатор элемента;
+     * @param params - параметры выбора элемента. Содержит:
+     *      - expandIntermediateItems - осуществить ли автоматическое разворачивание всех потомков указанного элемента;
+     *      - scrollToParent - осуществить ли автоматическое пролистывание не к самому элементу, а к его ближайшему родителю;
+     *      - scrollAnimation - использовать ли плавное пролистывание.
+     */
     setActiveItem(id, params) {
         const {indexedStructure} = this.state;
         let activeItem = { id };
@@ -214,6 +364,10 @@ export const TreeList = React.createClass({
         });
     },
 
+    /**
+     * Обработчик события ввода поисковой фразы в поле поиска.
+     * Запускаем поиск только после окончания ввода (в соответствии с заданным таймаутом).
+     */
     handleSearchPhraseTyping (e) {
         const {searchTimeout} = this.props;
         const {searchTimer} = this.state;
@@ -225,6 +379,15 @@ export const TreeList = React.createClass({
         this.setState({ searchTimer: timer });
     },
 
+    /**
+     * Осуществляем рендеринг корневых элементов дерева - разделов.
+     * Они отличаются тем, что имеют специальные стили, всегда развернуты и несворачиваемы;
+     * по ним не осуществляется поиск и их нельзя выбрать как активные.
+     *
+     * Для рендеринга групп элементов используем компонент TreeListItemsGroup.
+     *
+     * @returns {JSX.Element | JSX.Element[]}
+     */
     renderSections () {
         const {structure, itemTemplate} = this.props;
         const {filteredStructure, highlightRule, activeItem} = this.state;

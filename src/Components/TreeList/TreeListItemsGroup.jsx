@@ -8,9 +8,30 @@ import {PersistState} from 'Utils/PersistState';
 
 require('Styles/Components/TreeList.less');
 
+/**
+ * Компонент группы элементов древовидного списка.
+ */
 export const TreeListItemsGroup = React.createClass({
     displayName: 'TreeListItemsGroup',
 
+    /**
+     * expandable - является ли группа элементов разворачиваемой;
+     * expanded - является ли группа элементов развернутой по умолчанию;
+     * classes - дополнительные css-классы, которыми необходимо маркировать группы элементов;
+     * item - элемент структуры дерева (элемент + все его наследники), соответствующий текущей группе элементов;
+     * highlightRule - правило для выделения элементов дерева.
+     *      Содержит:
+     *          - field - поле, по которому производится поиск;
+     *          - value - значение указанного поля, элементы с которым должны быть выделены;
+     *          - isStrict - использовать ли строгое совпадение (в противном случае будет использоваться поиск по подстроке).
+     * activeItem - активный элемент дерева (выделяется полужирным).
+     *      Содержит:
+     *          - id - идентификатор элемента дерева, который нужно поменить активным;
+     *          - location - местоположение элемента (опциональное поле, используется для автоматического разворачивания родительских элементов);
+     *              - path - путь (массив с родительскими элементами) к элементу;
+     *              - index - порядковый номер в списке элементов ближайшего родителя;
+     * itemTemplate - callback-функция, реализующая шаблон для элемента дерева.
+     */
     propTypes: {
         expandable: React.PropTypes.bool,
         expanded: React.PropTypes.bool,
@@ -21,7 +42,14 @@ export const TreeListItemsGroup = React.createClass({
         itemTemplate: React.PropTypes.func.isRequired
     },
 
+    /**
+     * Префикс ключа для "консервирования" локального state в персистентном хранилище состояний.
+     */
     persistStateKeyPrefix: 'navigation_item_',
+
+    /**
+     * Перечень полей локального state, которые необходимо так же хранить в персистентном хранилище состояний.
+     */
     persistStateItems: ['expanded'],
 
     getDefaultProps: function() {
@@ -31,6 +59,17 @@ export const TreeListItemsGroup = React.createClass({
         };
     },
 
+    /**
+     * expanded - является ли группа элементов развернутой по умолчанию;
+     * activeItem - активный элемент дерева (выделяется полужирным).
+     *      Содержит:
+     *          - id - идентификатор элемента дерева, который нужно поменить активным;
+     *          - location - местоположение элемента (опциональное поле, используется для автоматического разворачивания родительских элементов);
+     *              - path - путь (массив с родительскими элементами) к элементу;
+     *              - index - порядковый номер в списке элементов ближайшего родителя;
+     *      activeItem хранится в том числе в локальном state, т. к. в последствии он меняется.
+     * isExpandingDown - флаг, указывающий на то, что в данный момент происходит сворачивание группы элементов.
+     */
     getInitialState () {
         return {
             expanded: this.props.expanded,
@@ -39,6 +78,11 @@ export const TreeListItemsGroup = React.createClass({
         };
     },
 
+    /**
+     * Перед монтированием компоненты достаем "законсервированный" локальный state из персистентного хранилища состояний,
+     * а также маркируем группу как развернутую, если она содержится в пути к выбранному активному элементу
+     * (иначе говоря - прокладываем путь к вбыранному активному элементу).
+     */
     componentWillMount () {
         const {item:{id}} = this.props;
         const persistState = PersistState.get(`${this.persistStateKeyPrefix}${id}`);
@@ -47,6 +91,10 @@ export const TreeListItemsGroup = React.createClass({
         this.expandWhenPartPathToActiveItem();
     },
 
+    /**
+     * После каждого обновления компонента синхронизируем её локальный state со state'ом, хранящимся в персистентном хранилище состояний,
+     * а также маркируем группу как развернутую, если она содержится в пути к выбранному активному элементу.
+     */
     componentDidUpdate() {
         this.expandWhenPartPathToActiveItem();
 
@@ -63,12 +111,20 @@ export const TreeListItemsGroup = React.createClass({
         PersistState.set(`${this.persistStateKeyPrefix}${id}`, persistState);
     },
 
+    /**
+     * Проверка, является ли текущая группа элементов частью пути к выбранному активном элементу.
+     *
+     * @return {boolean}
+     */
     isPartPathToActiveItem () {
         const {item:{id: itemId}, activeItem} = this.props;
 
         return !isNull(activeItem) && !isUndefined(activeItem.location) && activeItem.location.path.includes(itemId);
     },
 
+    /**
+     * Маркирование группы как развернутой, если она содержится в пути к выбранному активному элементу.
+     */
     expandWhenPartPathToActiveItem () {
         const {item:{id: itemId}, activeItem} = this.props;
 
@@ -79,12 +135,29 @@ export const TreeListItemsGroup = React.createClass({
         }
     },
 
+    /**
+     * Проверка, не является ли группа элементов пустой.
+     *
+     * @return {boolean}
+     */
     hasChildren () {
-        const pages = this.props.item.pages;
+        const {item:{pages}} = this.props;
 
         return isArray(pages) && pages.length !== 0;
     },
 
+    /**
+     * Выделение заголовка элемента в соответствии с переданным правилом.
+     *
+     * @param item - элемент, заголовок которого или его часть должны быть выделены, если требуется;
+     * @param rule - правило для выделения элементов дерева.
+     *      Содержит:
+     *          - field - поле, по которому производится поиск;
+     *          - value - значение указанного поля, элементы с которым должны быть выделены;
+     *          - isStrict - использовать ли строгое совпадение (в противном случае будет использоваться поиск по подстроке).
+     *
+     * @return {string|JSX.Element|JSX.Element[]}
+     */
     highlight (item, rule) {
         if (rule.isStrict && item[rule.field] == rule.value) {
             return <b>{item.title}</b>;
@@ -96,10 +169,28 @@ export const TreeListItemsGroup = React.createClass({
         }
     },
 
+    /**
+     * Маркировка элемента как активного, если требуется.
+     *
+     * @param item - элемент, который необходимо пометить, как активный, если требуется.
+     * @param activeItem - информация о вбыранном активном элементе дерева.
+     *      Содержит:
+     *          - id - идентификатор элемента дерева, который нужно поменить активным;
+     *          - location - местоположение элемента (опциональное поле, используется для автоматического разворачивания родительских элементов);
+     *              - path - путь (массив с родительскими элементами) к элементу;
+     *              - index - порядковый номер в списке элементов ближайшего родителя;
+     *
+     * @return {JSX.Element}
+     */
     markActiveItem(item, activeItem) {
         return item.id == activeItem.id ? <b>{item.title}</b> : null;
     },
 
+    /**
+     * Переключение состояния группы элементов: сворачивание или разворачивание.
+     *
+     * @param isExpand - флаг, указывающий на то, нужно ли развернуть группу элементов (false, если свернуть).
+     */
     toggleItem (isExpand) {
         const slideToggle = (callback, preHide) => {
             preHide = preHide || false;
@@ -122,6 +213,11 @@ export const TreeListItemsGroup = React.createClass({
         }
     },
 
+    /**
+     * Обработчик события наведения мыши на элемент или перехода к элементу посредством нажатия стрелок "вверх"/"вниз";
+     * При наведении осуществляется назначение обработчика для клавиатурной навигации по дереву.
+     * Стрелка влево сворачивает группу элементов, вправо - разворачивает.
+     */
     handleMouseEnter () {
         $(document).bind('keydown', (e) => {
             const {expanded} = this.state;
@@ -130,10 +226,17 @@ export const TreeListItemsGroup = React.createClass({
         })
     },
 
+    /**
+     * Обработчик события уведения курсора от элемента или перехода с помощью стрелок к другому элементу.
+     * При уведении курсора осуществляется сброс обработчика для клавиатурной навигации по дереву.
+     */
     handleMouseLeave () {
         $(document).unbind('keydown');
     },
 
+    /**
+     * Обработчик события клика по элементу, порождает разворачивание и показ дочерних элементов или сворачивание.
+     */
     handleItemClick (e) {
         e.preventDefault();
         const {expanded} = this.state;
@@ -141,6 +244,13 @@ export const TreeListItemsGroup = React.createClass({
         this.toggleItem(expanded);
     },
 
+    /**
+     * Рендеринг дочерних групп элементов.
+     *
+     * @param pages - массив страниц - дочерних элементов дерева.
+     *
+     * @return {JSX.Element[]}
+     */
     renderItems (pages) {
         const {highlightRule, activeItem, itemTemplate} = this.props;
         let pageElements = [];
@@ -160,6 +270,12 @@ export const TreeListItemsGroup = React.createClass({
         return pageElements;
     },
 
+    /**
+     * Рендеринг заголовка группы элементов.
+     * Заголовок рендерится в соответствии с установленным и переданным шаблоном.
+     *
+     * @return {JSX.Element}
+     */
     renderTitle () {
         const {expandable, item, highlightRule, activeItem, itemTemplate} = this.props;
         const hasChildren = this.hasChildren();
