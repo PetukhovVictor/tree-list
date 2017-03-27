@@ -4,10 +4,24 @@ import {TreeList} from 'Components/TreeList';
 
 import {TreeListDemoServices} from './Services';
 
+const treeListSourceUrl = '/assets/resources/tree_list.json';
+
+const itemTemplate = (item, handles) => {
+    return (
+        <a
+            href={item._allChildrenNumber !== 0 ? '#' : item.url}
+            onClick={item._allChildrenNumber == 0 ? null : handles.click}
+            onMouseEnter={handles.mouseEnter}
+            onMouseLeave={handles.mouseLeave}
+            className="page-item-title"
+        >
+            {item.title}
+        </a>
+    )
+};
+
 export const TreeListDemo = React.createClass({
     displayName: 'TreeListDemo',
-
-    sourceUrl: '/assets/resources/tree_list.json',
 
     getInitialState () {
         return {
@@ -17,7 +31,7 @@ export const TreeListDemo = React.createClass({
     },
 
     componentDidMount () {
-        TreeListDemoServices.loadFromJSON(this.sourceUrl).then(treeListStructure => {
+        TreeListDemoServices.loadFromJSON(treeListSourceUrl).then(treeListStructure => {
             this.setState({
                 isLoading: false,
                 structure: treeListStructure
@@ -34,7 +48,9 @@ export const TreeListDemo = React.createClass({
         return (
             <div>
                 {
-                    isLoading ? <div className="tree-list-loading"></div> : <TreeList structure={structure} />
+                    isLoading ?
+                        <div className="tree-list-loading"></div> :
+                        <TreeList structure={structure} itemTemplate={itemTemplate} />
                 }
             </div>
         );
