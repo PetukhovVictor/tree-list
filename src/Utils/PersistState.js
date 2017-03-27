@@ -1,21 +1,15 @@
+import {isUndefined} from 'lodash';
+
 let state = {};
 
 export const PersistState = {
     set(id, data) {
-        return new Promise((resolve, reject) => {
-            state[id] = data;
-            resolve();
-        });
+        state[id] = data;
     },
     get(id) {
-        return new Promise((resolve, reject) => {
-            resolve(state[id]);
-        });
+        return state[id];
     },
     remove(id) {
-        return new Promise((resolve, reject) => {
-            delete state[id];
-            resolve();
-        });
+        delete state[id];
     }
 };
