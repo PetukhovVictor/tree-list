@@ -2,6 +2,15 @@
  * Обертка для удобной работы с API Tree list.
  */
 export const TreeListAPI = {
+    _dispatch: (name, params) => {
+        params = params || {};
+        document.dispatchEvent(
+            new CustomEvent(name, {
+                detail: params
+            })
+        );
+    },
+
     /**
      * Active items API. Установка активного элемента.
      * params:
@@ -11,12 +20,9 @@ export const TreeListAPI = {
      *      - scrollAnimation - (опционально, по умолчанию - true) - Использовать ли плавное пролистывание;
      */
     setActiveItem: (params) => {
-        document.dispatchEvent(
-            new CustomEvent('navigationSetActiveItem', {
-                detail: params
-            })
-        );
+        TreeListAPI._dispatch('navigationSetActiveItem', params);
     },
+
     /**
      * Search API. Запуск поиска по указанной фразе.
      * params:
@@ -24,30 +30,20 @@ export const TreeListAPI = {
      *      - isStrict (опционально) - использовать ли строгое совпадение (в противном случае будет использоваться поиск по подстроке).
      */
     search: (params) => {
-        document.dispatchEvent(
-            new CustomEvent('navigationSearch', {
-                detail: params
-            })
-        );
+        TreeListAPI._dispatch('navigationSearch', params);
     },
+
     /**
      * Сброс активного элемента.
      */
-    resetActiveItem: (params) => {
-        document.dispatchEvent(
-            new CustomEvent('navigationResetActiveItem', {
-                detail: params
-            })
-        );
+    resetActiveItem: () => {
+        TreeListAPI._dispatch('navigationResetActiveItem');
     },
+
     /**
      * Сброс результатов поиска.
      */
-    searchReset: (params) => {
-        document.dispatchEvent(
-            new CustomEvent('navigationSearchReset', {
-                detail: params
-            })
-        );
+    searchReset: () => {
+        TreeListAPI._dispatch('navigationSearchReset');
     }
 };
