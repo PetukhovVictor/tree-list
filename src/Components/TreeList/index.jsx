@@ -1,11 +1,28 @@
 import * as React from 'react';
 import {isArray, clone, cloneDeep} from 'lodash';
+import $ from 'jquery';
 
 require('Styles/Components/TreeList.less');
 
 import {TreeListItemsGroup} from './TreeListItemsGroup';
 
+const itemDefaultTemplate = (item, handles) => {
+    return (
+        <a
+            href={item._allChildrenNumber !== 0 ? '#' : item.url}
+            onClick={item._allChildrenNumber == 0 ? null : handles.click}
+            onMouseEnter={handles.mouseEnter}
+            onMouseLeave={handles.mouseLeave}
+            className="page-item-title"
+        >
+            {item.title}
+        </a>
+    )
+};
+
 export const TreeList = React.createClass({
+    displayName: 'TreeList',
+
     propTypes: {
         // Структура древовидного списка.
         structure: React.PropTypes.array,
@@ -14,14 +31,22 @@ export const TreeList = React.createClass({
 
     getDefaultProps: function() {
         return {
-            searchTimeout: 1000
+            searchTimeout: 1000,
+            itemTemplate: itemDefaultTemplate
         };
     },
 
     getInitialState () {
+        const indexedStructure = this.structureIndexing(
+            this.props.structure,
+            [],
+            { childrenCounters: [], indexedStructure: [] }
+        ).indexedStructure;
+
         return {
             searchTimer: null,
             filteredStructure: null,
+            indexedStructure: indexedStructure,
             highlightRule: null,
             activeItem: null
         };
@@ -42,7 +67,11 @@ export const TreeList = React.createClass({
             if (!detail || !detail.id) {
                 throw new Error('Id element is not defined.');
             }
-            this.setActiveItem(detail.id);
+            this.setActiveItem(detail.id, {
+                expandIntermediateItems: detail.expandIntermediateItems !== false,
+                scrollToParent: detail.scrollToParent !== false,
+                scrollAnimation: detail.scrollAnimation !== false,
+            });
         });
         document.addEventListener('navigationResetActiveItem', (e) => this.resetActiveItem());
         document.addEventListener('navigationSearchReset', (e) => this.searchReset());
@@ -50,6 +79,38 @@ export const TreeList = React.createClass({
 
     componentDidMount () {
         this.APIInit();
+    },
+
+    itemAppendChildInfo (item, structureElement) {
+        item._directChildrenNumber = structureElement.directChildrenNumber;
+        item._allChildrenNumber = structureElement.allChildrenNumber;
+    },
+
+    structureIndexing (structure, path, indexedStructureInfo) {
+        let ISI = indexedStructureInfo;
+
+        structure.forEach((item, index) => {
+            ISI.indexedStructure[item.id] = {
+                path: path,
+                index: index,
+                directChildrenNumber: isArray(item.pages) ? item.pages.length : 0
+            };
+
+            ISI.childrenCounters = ISI.childrenCounters.map((counter) => counter + 1);
+            ISI.childrenCounters.push(0);
+
+            if (isArray(item.pages)) {
+                let currentPath = clone(path);
+                currentPath.push(item.id);
+                ISI = this.structureIndexing(item.pages, currentPath, ISI);
+            }
+
+            ISI.indexedStructure[item.id].allChildrenNumber = ISI.childrenCounters.pop();
+
+            this.itemAppendChildInfo(item, ISI.indexedStructure[item.id]);
+        });
+
+        return ISI;
     },
 
     searchReset () {
@@ -125,8 +186,32 @@ export const TreeList = React.createClass({
         });
     },
 
-    setActiveItem(id) {
-        this.setState({ activeItem: id });
+    setActiveItem(id, params) {
+        const {indexedStructure} = this.state;
+        let activeItem = { id };
+
+        if (params.expandIntermediateItems) {
+            activeItem.location = cloneDeep(indexedStructure[id]);
+        }
+
+        const targetItemIdToScroll = params.scrollToParent && params.expandIntermediateItems ?
+            activeItem.location.path[activeItem.location.path.length - 1] :
+            activeItem.id;
+
+        this.setState({ activeItem }, () => {
+            if (!params.expandIntermediateItems) {
+                return;
+            }
+
+            const searchInputHeight = $('#tree-list-search').outerHeight();
+            const scrollTop = $(`*[id="tree-list-${targetItemIdToScroll}"]`).offset().top - searchInputHeight;
+
+            if (params.scrollAnimation) {
+                $('html, body').animate({ scrollTop }, 1000);
+            } else {
+                $('html, body').scrollTop(scrollTop);
+            }
+        });
     },
 
     handleSearchPhraseTyping (e) {
@@ -141,15 +226,16 @@ export const TreeList = React.createClass({
     },
 
     renderSections () {
-        const {structure} = this.props;
+        const {structure, itemTemplate} = this.props;
         const {filteredStructure, highlightRule, activeItem} = this.state;
         const targetStructure = filteredStructure || structure;
         let sectionElements = [];
 
-        targetStructure.forEach((section, index) => {
+        targetStructure.forEach((section) => {
             sectionElements.push(
                 <TreeListItemsGroup
                     key={section.id}
+                    itemTemplate={itemTemplate}
                     highlightRule={highlightRule}
                     activeItem={activeItem}
                     item={section}
@@ -166,7 +252,7 @@ export const TreeList = React.createClass({
     render () {
         return (
             <div className="tree-list">
-                <input type="text" onKeyUp={this.handleSearchPhraseTyping} className="tree-list-search" />
+                <input type="text" id="tree-list-search" onKeyUp={this.handleSearchPhraseTyping} className="tree-list-search" />
                 {this.renderSections()}
             </div>
         );
