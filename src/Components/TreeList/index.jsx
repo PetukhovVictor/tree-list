@@ -114,7 +114,6 @@ export const TreeList = React.createClass({
      *              }
      *          })
      *      );
-     * TODO: Написать класс-обертку для более красивого вызова методов API.
      */
     APIInit () {
         /**
