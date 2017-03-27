@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { findDOMNode } from 'react-dom';
-import {isArray, isFunction, isUndefined, isNull} from 'lodash';
+import {isArray, isFunction, isUndefined, clone, isNull} from 'lodash';
 import classNames from 'classnames';
 import $ from 'jquery';
 
@@ -286,14 +286,15 @@ export const TreeListItemsGroup = React.createClass({
                 <span className="page-item-title">{item.title}</span>
             );
         } else {
+            let itemForTemplate = clone(item);
             if (highlightRule !== null) {
-                item.title = this.highlight(item, highlightRule);
+                itemForTemplate.title = this.highlight(itemForTemplate, highlightRule);
             }
             if (activeItem !== null) {
-                item.title = this.markActiveItem(item, activeItem) || item.title;
+                itemForTemplate.title = this.markActiveItem(itemForTemplate, activeItem) || itemForTemplate.title;
             }
 
-            titleElement = itemTemplate(item, {
+            titleElement = itemTemplate(itemForTemplate, {
                 click: this.handleItemClick,
                 mouseEnter: this.handleMouseEnter,
                 mouseLeave: this.handleMouseLeave

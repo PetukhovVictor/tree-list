@@ -53,7 +53,7 @@ export const TreeList = React.createClass({
 
     getDefaultProps: function() {
         return {
-            searchTimeout: 1000,
+            searchTimeout: 500,
             itemTemplate: itemDefaultTemplate
         };
     },
