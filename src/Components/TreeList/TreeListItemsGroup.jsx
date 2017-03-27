@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { findDOMNode } from 'react-dom';
-import {isArray, isFunction, isUndefined} from 'lodash';
+import {isArray, isFunction, isUndefined, isNull} from 'lodash';
 import classNames from 'classnames';
 import $ from 'jquery';
 
@@ -9,13 +9,16 @@ import {PersistState} from 'Utils/PersistState';
 require('Styles/Components/TreeList.less');
 
 export const TreeListItemsGroup = React.createClass({
+    displayName: 'TreeListItemsGroup',
+
     propTypes: {
         expandable: React.PropTypes.bool,
         expanded: React.PropTypes.bool,
         classes: React.PropTypes.array,
         item: React.PropTypes.object.isRequired,
         highlightRule: React.PropTypes.object,
-        activeItem: React.PropTypes.string
+        activeItem: React.PropTypes.object,
+        itemTemplate: React.PropTypes.func.isRequired
     },
 
     persistStateKeyPrefix: 'navigation_item_',
@@ -31,19 +34,22 @@ export const TreeListItemsGroup = React.createClass({
     getInitialState () {
         return {
             expanded: this.props.expanded,
+            activeItem: this.props.activeItem,
             isExpandingDown: false
         };
     },
 
-    componentDidMount () {
+    componentWillMount () {
         const {item:{id}} = this.props;
+        const persistState = PersistState.get(`${this.persistStateKeyPrefix}${id}`);
 
-        PersistState.get(`${this.persistStateKeyPrefix}${id}`).then((persistState) => {
-            !isUndefined(persistState) && this.setState(persistState);
-        });
+        !isUndefined(persistState) && this.setState(persistState);
+        this.expandWhenPartPathToActiveItem();
     },
 
     componentDidUpdate() {
+        this.expandWhenPartPathToActiveItem();
+
         const {item:{id}} = this.props;
         const state = this.state;
         const persistState = {};
@@ -55,6 +61,22 @@ export const TreeListItemsGroup = React.createClass({
         });
 
         PersistState.set(`${this.persistStateKeyPrefix}${id}`, persistState);
+    },
+
+    isPartPathToActiveItem () {
+        const {item:{id: itemId}, activeItem} = this.props;
+
+        return !isNull(activeItem) && !isUndefined(activeItem.location) && activeItem.location.path.includes(itemId);
+    },
+
+    expandWhenPartPathToActiveItem () {
+        const {item:{id: itemId}, activeItem} = this.props;
+
+        if (this.isPartPathToActiveItem()) {
+            const indexInPathToActiveItem = activeItem.location.path.indexOf(itemId);
+            activeItem.location.path.splice(indexInPathToActiveItem, 1);
+            this.setState({ expanded: true, activeItem });
+        }
     },
 
     hasChildren () {
@@ -75,12 +97,10 @@ export const TreeListItemsGroup = React.createClass({
     },
 
     markActiveItem(item, activeItem) {
-        return item.id == activeItem ? <b>{item.title}</b> : null;
+        return item.id == activeItem.id ? <b>{item.title}</b> : null;
     },
 
-    handleItemClick (e) {
-        e.preventDefault();
-        let {expanded} = this.state;
+    toggleItem (isExpand) {
         const slideToggle = (callback, preHide) => {
             preHide = preHide || false;
             const el = findDOMNode(this.refs['children-pages']);
@@ -89,12 +109,12 @@ export const TreeListItemsGroup = React.createClass({
         };
         const setState = (callback) => {
             this.setState({
-                expanded: !expanded,
+                expanded: !isExpand,
                 isExpandingDown: false
             }, () => isFunction(callback) && callback());
         };
 
-        if (expanded) {
+        if (isExpand) {
             this.setState({ isExpandingDown: true });
             slideToggle(setState);
         } else {
@@ -102,17 +122,37 @@ export const TreeListItemsGroup = React.createClass({
         }
     },
 
+    handleMouseEnter () {
+        $(document).bind('keydown', (e) => {
+            const {expanded} = this.state;
+            e.keyCode == 39 && !expanded && this.toggleItem(false);
+            e.keyCode == 37 && expanded && this.toggleItem(true);
+        })
+    },
+
+    handleMouseLeave () {
+        $(document).unbind('keydown');
+    },
+
+    handleItemClick (e) {
+        e.preventDefault();
+        const {expanded} = this.state;
+
+        this.toggleItem(expanded);
+    },
+
     renderItems (pages) {
-        const {highlightRule, activeItem} = this.props;
+        const {highlightRule, activeItem, itemTemplate} = this.props;
         let pageElements = [];
 
-        pages.forEach((page, index) => {
+        pages.forEach((page) => {
             pageElements.push(
                 <TreeListItemsGroup
                     key={page.id}
                     item={page}
                     highlightRule={highlightRule}
                     activeItem={activeItem}
+                    itemTemplate={itemTemplate}
                 />
             );
         });
@@ -121,7 +161,7 @@ export const TreeListItemsGroup = React.createClass({
     },
 
     renderTitle () {
-        const {expandable, item, highlightRule, activeItem} = this.props;
+        const {expandable, item, highlightRule, activeItem, itemTemplate} = this.props;
         const hasChildren = this.hasChildren();
         let titleElement;
 
@@ -130,16 +170,18 @@ export const TreeListItemsGroup = React.createClass({
                 <span className="page-item-title">{item.title}</span>
             );
         } else {
-            let itemTitle = item.title;
             if (highlightRule !== null) {
-                itemTitle = this.highlight(item, highlightRule);
+                item.title = this.highlight(item, highlightRule);
             }
             if (activeItem !== null) {
-                itemTitle = this.markActiveItem(item, activeItem) || itemTitle;
+                item.title = this.markActiveItem(item, activeItem) || item.title;
             }
-            titleElement = (
-                <a href="#" onClick={this.handleItemClick} className="page-item-title">{itemTitle}</a>
-            );
+
+            titleElement = itemTemplate(item, {
+                click: this.handleItemClick,
+                mouseEnter: this.handleMouseEnter,
+                mouseLeave: this.handleMouseLeave
+            });
         }
 
         return titleElement;
@@ -156,7 +198,7 @@ export const TreeListItemsGroup = React.createClass({
         };
 
         return (
-            <div className={classNames(classes, externalClasses)} key={`page`}>
+            <div className={classNames(classes, externalClasses)} key={`page`} id={`tree-list-${item.id}`}>
                 {this.renderTitle()}
                 {
                     expanded && hasChildren && (
